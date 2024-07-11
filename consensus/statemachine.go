@@ -28,40 +28,38 @@ var (
 )
 
 func NewEpochStateMachine(clusterID, nodeID uint64) statemachine.IOnDiskStateMachine {
-	epochFile := "./persistence/epoch" // TODO make this configurable
-
-	// Read the current epoch now, crash if we can't
-	var epoch PersistenceEpoch
-	if _, err := os.Stat(epochFile); errors.Is(err, os.ErrNotExist) {
-		epoch = PersistenceEpoch{
-			RaftIndex: 0,
-			Epoch:     0,
-		}
-	} else if err != nil {
-		logger.Fatal().Err(err).Msg("error opening persistence file")
-	} else {
-		fileBytes, err := os.ReadFile(epochFile)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("error reading persistence file")
-		}
-		// TODO switch from json to proto when done dev
-		err = json.Unmarshal(fileBytes, &epoch)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("error deserializing persistence file, is it corrupted?")
-		}
-	}
+	epochFile := "./epoch.json" // TODO make this configurable and not json
 
 	sm := &EpochStateMachine{
 		ClusterID: clusterID,
 		NodeID:    nodeID,
 		EpochFile: epochFile,
-		epoch:     epoch,
 	}
 
 	return sm
 }
 
 func (e *EpochStateMachine) Open(stopc <-chan struct{}) (uint64, error) {
+	// Read the current epoch now, crash if we can't
+	if _, err := os.Stat(e.EpochFile); errors.Is(err, os.ErrNotExist) {
+		e.epoch = PersistenceEpoch{
+			RaftIndex: 0,
+			Epoch:     0,
+		}
+	} else if err != nil {
+		logger.Fatal().Err(err).Msg("error opening persistence file")
+	} else {
+		fileBytes, err := os.ReadFile(e.EpochFile)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("error reading persistence file")
+		}
+		// TODO switch from json to proto when done dev
+		err = json.Unmarshal(fileBytes, &e.epoch)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("error deserializing persistence file, is it corrupted?")
+		}
+	}
+
 	return e.epoch.RaftIndex, nil
 }
 
