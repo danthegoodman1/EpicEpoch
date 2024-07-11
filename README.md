@@ -1,4 +1,4 @@
-# GoAPITemplate
+# EpicEpoch
 
 ## Log Context
 

@@ -1,0 +1,14 @@
+syntax = "proto3";
+package api.v1;
+
+option go_package = "github.com/danthegoodman1/EpicEpoch/proto/api/v1";
+
+message HybridTimestamp {
+  bytes timestamp = 1;
+}
+
+message Empty {};
+
+service HybridTimestampAPI {
+  rpc GetTimestamp(Empty) returns (HybridTimestamp) {};
+}

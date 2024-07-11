@@ -1,7 +1,7 @@
 package observability
 
 import (
-	"github.com/danthegoodman1/GoAPITemplate/gologger"
+	"github.com/danthegoodman1/EpicEpoch/gologger"
 	"log"
 	"net/http"
 	httppprof "net/http/pprof"

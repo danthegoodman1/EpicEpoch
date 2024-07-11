@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/danthegoodman1/GoAPITemplate/gologger"
+	"github.com/danthegoodman1/EpicEpoch/gologger"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
@@ -44,7 +44,7 @@ func ccHandler(h func(*CustomContext) error) echo.HandlerFunc {
 }
 
 func (c *CustomContext) internalErrorMessage() string {
-	return "internal error, request id: " + c.RequestID
+	return "api error, request id: " + c.RequestID
 }
 
 func (c *CustomContext) InternalError(err error, msg string) error {

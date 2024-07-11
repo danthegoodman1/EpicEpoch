@@ -15,7 +15,7 @@ func customHTTPErrorHandler(err error, c echo.Context) {
 	}
 
 	logger := zerolog.Ctx(c.Request().Context())
-	logger.Error().Err(err).Msg("unhandled internal error")
+	logger.Error().Err(err).Msg("unhandled api error")
 
 	c.String(http.StatusInternalServerError, "Something went wrong internally, an error has been logged")
 }
