@@ -51,6 +51,16 @@ func StartRaft() (*dragonboat.NodeHost, error) {
 				}))
 				cancel()
 			}
+			if leader == nodeID {
+				// Let's read
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+				i, err := nh.SyncRead(ctx, 111, nil)
+				if err != nil {
+					panic(err)
+				}
+				logger.Info().Msgf("GOT READ VALUE: %+v", i)
+				cancel()
+			}
 		}
 	}()
 
