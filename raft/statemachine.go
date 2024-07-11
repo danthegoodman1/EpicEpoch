@@ -1,4 +1,4 @@
-package consensus
+package raft
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"github.com/danthegoodman1/EpicEpoch/gologger"
 	"github.com/danthegoodman1/EpicEpoch/utils"
 	"github.com/lni/dragonboat/v3/statemachine"
+	"github.com/rs/zerolog"
 	"io"
 	"os"
 )
@@ -20,6 +21,7 @@ type (
 		EpochFile string
 		epoch     PersistenceEpoch
 		closed    bool
+		logger    zerolog.Logger
 	}
 
 	PersistenceEpoch struct {
@@ -33,18 +35,20 @@ var (
 )
 
 func NewEpochStateMachine(clusterID, nodeID uint64) statemachine.IOnDiskStateMachine {
-	epochFile := "./epoch.json" // TODO make this configurable
+	epochFile := fmt.Sprintf("./epoch-%d.json", nodeID) // TODO make this configurable
 
 	sm := &EpochStateMachine{
 		ClusterID: clusterID,
 		NodeID:    nodeID,
 		EpochFile: epochFile,
+		logger:    gologger.NewLogger(),
 	}
 
 	return sm
 }
 
 func (e *EpochStateMachine) Open(stopChan <-chan struct{}) (uint64, error) {
+	e.logger.Debug().Msg("open")
 	// Read the current epoch now, crash if we can't
 	if _, err := os.Stat(e.EpochFile); errors.Is(err, os.ErrNotExist) {
 		e.epoch = PersistenceEpoch{
@@ -69,6 +73,7 @@ func (e *EpochStateMachine) Open(stopChan <-chan struct{}) (uint64, error) {
 }
 
 func (e *EpochStateMachine) Update(entries []statemachine.Entry) ([]statemachine.Entry, error) {
+	e.logger.Debug().Interface("entries", entries).Msg("update")
 	if e.closed {
 		panic("Update called after close!")
 	}
@@ -79,6 +84,7 @@ func (e *EpochStateMachine) Update(entries []statemachine.Entry) ([]statemachine
 	if err != nil {
 		return nil, fmt.Errorf("error in json.Unmarshal: %w", err)
 	}
+	e.epoch.RaftIndex = entries[len(entries)-1].Index
 
 	err = WriteFileAtomic(e.EpochFile, utils.MustMarshal(e.epoch), 0777)
 	if err != nil {
@@ -92,6 +98,7 @@ func (e *EpochStateMachine) Update(entries []statemachine.Entry) ([]statemachine
 var ErrAlreadyClosed = errors.New("already closed")
 
 func (e *EpochStateMachine) Lookup(i interface{}) (interface{}, error) {
+	e.logger.Debug().Interface("lookup", i).Msg("lookup")
 	if e.closed {
 		return nil, ErrAlreadyClosed
 	}
@@ -101,6 +108,7 @@ func (e *EpochStateMachine) Lookup(i interface{}) (interface{}, error) {
 }
 
 func (e *EpochStateMachine) Sync() error {
+	e.logger.Debug().Msg("sync")
 	if e.closed {
 		panic("Sync called after close!")
 	}
@@ -109,6 +117,7 @@ func (e *EpochStateMachine) Sync() error {
 }
 
 func (e *EpochStateMachine) PrepareSnapshot() (interface{}, error) {
+	e.logger.Debug().Msg("prepare snapshot")
 	if e.closed {
 		panic("PrepareSnapshot called after close!")
 	}
@@ -118,6 +127,7 @@ func (e *EpochStateMachine) PrepareSnapshot() (interface{}, error) {
 }
 
 func (e *EpochStateMachine) SaveSnapshot(i interface{}, writer io.Writer, stopChan <-chan struct{}) error {
+	e.logger.Debug().Msg("save snapshot")
 	if e.closed {
 		panic("SaveSnapshot called after close!")
 	}
@@ -136,6 +146,7 @@ func (e *EpochStateMachine) SaveSnapshot(i interface{}, writer io.Writer, stopCh
 }
 
 func (e *EpochStateMachine) RecoverFromSnapshot(reader io.Reader, stopChan <-chan struct{}) error {
+	e.logger.Debug().Msg("recover from snapshot")
 	if e.closed {
 		panic("RecoverFromSnapshot called after close!")
 	}
@@ -161,6 +172,7 @@ func (e *EpochStateMachine) RecoverFromSnapshot(reader io.Reader, stopChan <-cha
 }
 
 func (e *EpochStateMachine) Close() error {
+	e.logger.Debug().Msg("close")
 	// Dragonboat claims that nothing else besides Lookup may be called after closed,
 	// but we can also be safe :)
 	if e.closed {
