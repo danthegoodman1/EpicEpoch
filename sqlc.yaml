@@ -1,0 +1,56 @@
+version: 2
+sql:
+  - engine: "postgresql"
+    schema: "schema.sql"
+    queries: "./queries/"
+    gen:
+      go:
+        sql_package: "pgx/v5"
+        out: "query"
+        package: "query"
+        overrides:
+          # for some reason we sometimes need the catalog prefix and sometimes not although docs say we should always use it
+          - db_type: "pg_catalog.bool"
+            go_type: "database/sql.NullBool"
+            nullable: true
+          - db_type: "bool"
+            go_type: "database/sql.NullBool"
+            nullable: true
+
+          - db_type: "int8"
+            go_type: "database/sql.NullInt64"
+            nullable: true
+          - db_type: "pg_catalog.int8"
+            go_type: "database/sql.NullInt64"
+            nullable: true
+
+          - db_type: "int2"
+            go_type: "database/sql.NullInt16"
+            nullable: true
+          - db_type: "pg_catalog.int2"
+            go_type: "database/sql.NullInt16"
+            nullable: true
+
+          - db_type: "float4"
+            go_type: "database/sql.NullFloat64"
+            nullable: true
+
+          - db_type: "float8"
+            go_type: "database/sql.NullFloat64"
+            nullable: true
+
+          - db_type: "text"
+            go_type: "database/sql.NullString"
+            nullable: true
+
+          - db_type: "timestamptz"
+            go_type: "database/sql.NullTime"
+            nullable: true
+
+          - db_type: "timestamptz"
+            go_type: "time.Time"
+            nullable: false
+
+          - db_type: "timestamptz"
+            go_type: "database/sql.NullTime"
+            nullable: false
