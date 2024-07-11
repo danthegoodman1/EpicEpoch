@@ -6,6 +6,7 @@ import (
 	"github.com/danthegoodman1/EpicEpoch/utils"
 	"github.com/lni/dragonboat/v3"
 	"github.com/lni/dragonboat/v3/config"
+	dragonlogger "github.com/lni/dragonboat/v3/logger"
 	"os"
 	"path/filepath"
 	"time"
@@ -29,6 +30,7 @@ func StartRaft() (*dragonboat.NodeHost, error) {
 		RTTMillisecond: 10, // TODO: make this configurable, start lower (1ms)
 		RaftAddress:    os.Getenv("RAFT_ADDR"),
 	}
+	dragonlogger.SetLoggerFactory(CreateLogger)
 	nh, err := dragonboat.NewNodeHost(nhc)
 	if err != nil {
 		panic(err)
