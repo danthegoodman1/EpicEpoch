@@ -9,7 +9,7 @@ Used for distributed systems and clients, like distributed transactions.
 <!-- TOC -->
 * [EpicEpoch](#epicepoch)
   * [Reading the timestamp value](#reading-the-timestamp-value)
-  * [HTTP endpoints](#http-endpoints)
+  * [HTTP endpoints (h1.1 & h2c)](#http-endpoints-h11--h2c)
   * [Client design](#client-design)
   * [Latency and concurrency](#latency-and-concurrency)
     * [Latency optimizations](#latency-optimizations)
@@ -24,7 +24,7 @@ This ensures that transactions are always unique and in order, latency and concu
 
 This also ensures that the request and response are each a single TCP frame.
 
-## HTTP endpoints
+## HTTP endpoints (h1.1 & h2c)
 
 `/up` exists to check if the HTTP server is running
 `/ready` checks to see if the node has joined the cluster and is ready to serve requests
