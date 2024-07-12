@@ -60,10 +60,14 @@ func StartRaft() (*EpochHost, error) {
 	}()
 
 	eh := &EpochHost{
-		nodeHost:   nh,
-		epochIndex: atomic.Uint64{},
-		lastEpoch:  atomic.Uint64{},
+		nodeHost:             nh,
+		epochIndex:           atomic.Uint64{},
+		lastEpoch:            atomic.Uint64{},
+		readerAgentStopChan:  make(chan struct{}),
+		timestampRequestChan: make(chan chan []byte, utils.TimestampRequestBuffer),
 	}
+
+	go eh.readerAgentLoop()
 
 	return eh, nil
 }
