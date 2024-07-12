@@ -90,24 +90,24 @@ func StartRaft() (*EpochHost, error) {
 					logger.Error().Uint64("newEpoch", newEpoch).Uint64("lastEpoch", eh.lastEpoch.Load()).Msg("new epoch less than last epoch, there must be clock drift, incrementing new epoch by 1")
 					newEpoch++
 				} else {
-					warnedClockDrift = false
-					// Write the new value
-					err = eh.proposeNewEpoch(newEpoch)
-					if errors.Is(err, context.DeadlineExceeded) {
-						deadlines++
-						logger.Error().Str("crashTreshold", fmt.Sprintf("%d/%d", deadlines, utils.EpochIntervalDeadlineLimit)).Msg("deadline exceeded proposing new epoch")
-						if deadlines >= utils.EpochIntervalDeadlineLimit {
-							logger.Fatal().Msg("new epoch deadline threshold exceeded, crashing")
-							return
-						}
-					}
-					if err != nil {
-						// Bad, crash
-						logger.Fatal().Err(err).Msg("error in proposeNewEpoch, crashing")
+					warnedClockDrift = false // re-enable the warn trigger
+					deadlines = 0            // reset the deadlines counter
+				}
+
+				// Write the new value
+				err = eh.proposeNewEpoch(newEpoch)
+				if errors.Is(err, context.DeadlineExceeded) {
+					deadlines++
+					logger.Error().Str("crashTreshold", fmt.Sprintf("%d/%d", deadlines, utils.EpochIntervalDeadlineLimit)).Msg("deadline exceeded proposing new epoch")
+					if deadlines >= utils.EpochIntervalDeadlineLimit {
+						logger.Fatal().Msg("new epoch deadline threshold exceeded, crashing")
 						return
 					}
-
-					deadlines = 0 // reset the deadlines counter
+				}
+				if err != nil {
+					// Bad, crash
+					logger.Fatal().Err(err).Msg("error in proposeNewEpoch, crashing")
+					return
 				}
 			}
 		}

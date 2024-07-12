@@ -81,8 +81,23 @@ func (e *EpochHost) generateTimestamps() {
 
 	if currentEpoch.Epoch == 0 {
 		// Must be new, write one first
-		logger.Warn().Msg("read current epoch 0, writing a value first")
-		err = e.proposeNewEpoch(uint64(time.Now().UnixNano()))
+		currentEpoch.Epoch = uint64(time.Now().UnixNano())
+		logger.Warn().Msgf("read current epoch 0, writing first value %d", currentEpoch.Epoch)
+		err = e.proposeNewEpoch(currentEpoch.Epoch)
+		if err != nil {
+			// This is never good, crash
+			logger.Fatal().Err(err).Msg("error in nodeHost.SyncPropose")
+			return
+		}
+	} else if e.lastEpoch.Load() == 0 {
+		// We recently became the leader, we must increment the epoch
+		currentEpoch.Epoch = uint64(time.Now().UnixNano())
+		logger.Warn().Msgf("we must have been elected, incrementing epoch %d", currentEpoch.Epoch)
+		if currentEpoch.Epoch <= e.lastEpoch.Load() {
+			logger.Error().Uint64("newEpoch", currentEpoch.Epoch).Uint64("lastEpoch", e.lastEpoch.Load()).Msg("new epoch less than last epoch, there must be clock drift, incrementing new epoch by 1")
+			currentEpoch.Epoch++
+		}
+		err = e.proposeNewEpoch(currentEpoch.Epoch)
 		if err != nil {
 			// This is never good, crash
 			logger.Fatal().Err(err).Msg("error in nodeHost.SyncPropose")
