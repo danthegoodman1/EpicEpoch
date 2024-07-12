@@ -43,6 +43,7 @@ func StartHTTPServer(epochHost *raft.EpochHost) *HTTPServer {
 	s.Echo.HideBanner = true
 	s.Echo.HidePort = true
 	s.Echo.JSONSerializer = &utils.NoEscapeJSONSerializer{}
+	s.Echo.HTTPErrorHandler = customHTTPErrorHandler
 
 	s.Echo.Use(CreateReqContext)
 	s.Echo.Use(LoggerMiddleware)
@@ -51,6 +52,7 @@ func StartHTTPServer(epochHost *raft.EpochHost) *HTTPServer {
 
 	s.Echo.GET("/up", s.UpCheck)
 	s.Echo.GET("/ready", s.ReadyCheck)
+	s.Echo.GET("/timestamp", ccHandler(s.GetTimestamp))
 
 	s.Echo.Listener = listener
 	go func() {
@@ -112,6 +114,33 @@ func (s *HTTPServer) ReadyCheck(c echo.Context) error {
 	}
 
 	return c.String(http.StatusOK, fmt.Sprintf("leader=%d nodeID=%d raftAvailable=%t\n", leader, utils.NodeID, available))
+}
+
+func (s *HTTPServer) GetTimestamp(c *CustomContext) error {
+	ctx, cancel := context.WithTimeout(c.Request().Context(), time.Second)
+	defer cancel()
+	// Verify that this is the raft leader
+	leader, available, err := s.EpochHost.GetLeader()
+	if err != nil {
+		return fmt.Errorf("error in NodeHost.GetLeaderID: %w", err)
+	}
+
+	if !available {
+		return c.String(http.StatusInternalServerError, "raft leadership not ready")
+	}
+
+	if leader != utils.NodeID {
+		// TODO: redirect
+		return c.String(http.StatusConflict, fmt.Sprintf("This (%d) is not the leader (%d)", utils.NodeID, leader))
+	}
+
+	// Get a timestamp
+	timestamp, err := s.EpochHost.GetUniqueTimestamp(ctx)
+	if err != nil {
+		return fmt.Errorf("error in EpochHost.GetUniqueTimestamp: %w", err)
+	}
+
+	return c.Blob(http.StatusOK, "application/octet-stream", timestamp)
 }
 
 func (s *HTTPServer) Shutdown(ctx context.Context) error {

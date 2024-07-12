@@ -1,15 +1,7 @@
 # EpicEpoch
 
-## Log Context
+An epic epoch service.
 
-The thing that gives logging a separate context is the function call:
+Generating monotonic timestamps at absurd concurrency, handles 1M concurrent requests or 1M req/s.
 
-```go
-logger := gologger.NewLogger()
-// ...
-ctx = logger.WithContext(ctx)
-```
-
-Otherwise all logging will share the context (weird I know).
-
-From here you can use `logger := zerolog.Ctx(ctx)`
+Used for distributed systems and clients, like distributed transactions.

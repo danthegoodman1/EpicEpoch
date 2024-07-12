@@ -80,10 +80,19 @@ func (e *EpochStateMachine) Update(entries []statemachine.Entry) ([]statemachine
 
 	// Since all writes are to the same key, we can just take the last one and write it
 	// Update it in memory
-	err := json.Unmarshal(entries[len(entries)-1].Cmd, &e.epoch)
+	// Verify that it's newer than the current time
+	var newEpoch PersistenceEpoch
+	err := json.Unmarshal(entries[len(entries)-1].Cmd, &newEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error in json.Unmarshal: %w", err)
 	}
+
+	if newEpoch.Epoch <= e.epoch.Epoch {
+		return nil, fmt.Errorf("update epoch was not greater than the current epoch, there is clock drift or a bug")
+	}
+	// Otherwise we can update it
+	e.epoch = newEpoch
+
 	e.epoch.RaftIndex = entries[len(entries)-1].Index
 
 	err = WriteFileAtomic(e.EpochFile, utils.MustMarshal(e.epoch), 0777)
