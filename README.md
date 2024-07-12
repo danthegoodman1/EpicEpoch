@@ -18,10 +18,20 @@ Used for distributed systems and clients, like distributed transactions.
 
 ## Reading the timestamp value
 
+The timestamp value is 16 bytes, constructed of an 8 byte timestamp (unix nanoseconds) + an 8 byte epoch index.
+
+This ensures that transactions are always unique and in order, latency and concurrency for serving timestamp requests is maximized, and timestamps can be reversed for time-range queries against your data.
+
+This also ensures that the request and response are each a single TCP frame.
+
 ## HTTP endpoints
 
 `/up` exists to check if the HTTP server is running
 `/ready` checks to see if the node has joined the cluster and is ready to serve requests
+
+
+`/timestamp` can be used to fetch the 16 byte timestamp value.
+
 
 `/members` returns a JSON in the shape of:
 
