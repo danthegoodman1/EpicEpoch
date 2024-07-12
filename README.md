@@ -8,6 +8,8 @@ Used for distributed systems and clients, like distributed transactions. Self-su
 
 <!-- TOC -->
 * [EpicEpoch](#epicepoch)
+  * [Getting started](#getting-started)
+  * [Configuration (env vars)](#configuration-env-vars)
   * [Reading the timestamp value](#reading-the-timestamp-value)
   * [HTTP endpoints (h1.1 & h2c)](#http-endpoints-h11--h2c)
   * [Client design](#client-design)
@@ -15,6 +17,14 @@ Used for distributed systems and clients, like distributed transactions. Self-su
     * [Latency optimizations](#latency-optimizations)
     * [Concurrency optimizations](#concurrency-optimizations)
 <!-- TOC -->
+
+## Getting started
+
+WIP
+
+## Configuration (env vars)
+
+WIP
 
 ## Reading the timestamp value
 
