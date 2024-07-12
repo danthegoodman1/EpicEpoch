@@ -22,6 +22,10 @@ Used for distributed systems and clients, like distributed transactions. Self-su
 
 WIP
 
+- running
+- data directory
+- some info about disk usage
+
 ## Configuration (env vars)
 
 WIP
