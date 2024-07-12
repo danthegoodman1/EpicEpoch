@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/danthegoodman1/EpicEpoch/raft"
 	"net"
 	"net/http"
 	"os"
@@ -21,21 +22,23 @@ import (
 var logger = gologger.NewLogger()
 
 type HTTPServer struct {
-	Echo *echo.Echo
+	Echo      *echo.Echo
+	EpochHost *raft.EpochHost
 }
 
 type CustomValidator struct {
 	validator *validator.Validate
 }
 
-func StartHTTPServer() *HTTPServer {
+func StartHTTPServer(epochHost *raft.EpochHost) *HTTPServer {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", utils.GetEnvOrDefault("HTTP_PORT", "8080")))
 	if err != nil {
 		logger.Error().Err(err).Msg("error creating tcp listener, exiting")
 		os.Exit(1)
 	}
 	s := &HTTPServer{
-		Echo: echo.New(),
+		Echo:      echo.New(),
+		EpochHost: epochHost,
 	}
 	s.Echo.HideBanner = true
 	s.Echo.HidePort = true
@@ -46,8 +49,8 @@ func StartHTTPServer() *HTTPServer {
 	s.Echo.Use(middleware.CORS())
 	s.Echo.Validator = &CustomValidator{validator: validator.New()}
 
-	// technical - no auth
-	s.Echo.GET("/hc", s.HealthCheck)
+	s.Echo.GET("/up", s.UpCheck)
+	s.Echo.GET("/ready", s.ReadyCheck)
 
 	s.Echo.Listener = listener
 	go func() {
@@ -84,8 +87,31 @@ func ValidateRequest(c echo.Context, s interface{}) error {
 	return nil
 }
 
-func (*HTTPServer) HealthCheck(c echo.Context) error {
+// UpCheck is just whether the HTTP server is running,
+// not necessarily that it's able to serve requests
+func (s *HTTPServer) UpCheck(c echo.Context) error {
 	return c.String(http.StatusOK, "ok")
+}
+
+// ReadyCheck checks whether everything is ready to start serving requests
+func (s *HTTPServer) ReadyCheck(c echo.Context) error {
+	ctx := c.Request().Context()
+	logger := zerolog.Ctx(ctx)
+	// Verify that raft leadership information is available
+	leader, available, err := s.EpochHost.GetLeader()
+	if err != nil {
+		return fmt.Errorf("error in NodeHost.GetLeaderID: %w", err)
+	}
+
+	if !available {
+		return c.String(http.StatusInternalServerError, "raft leadership not ready")
+	}
+
+	if leader == utils.NodeID {
+		logger.Debug().Msgf("Is leader (%d)", leader)
+	}
+
+	return c.String(http.StatusOK, fmt.Sprintf("leader=%d nodeID=%d raftAvailable=%t\n", leader, utils.NodeID, available))
 }
 
 func (s *HTTPServer) Shutdown(ctx context.Context) error {
