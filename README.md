@@ -6,6 +6,46 @@ Generating monotonic timestamps at absurd concurrency, handles 1M concurrent req
 
 Used for distributed systems and clients, like distributed transactions.
 
+<!-- TOC -->
+* [EpicEpoch](#epicepoch)
+  * [Reading the timestamp value](#reading-the-timestamp-value)
+  * [HTTP endpoints](#http-endpoints)
+  * [Client design](#client-design)
+  * [Latency and concurrency](#latency-and-concurrency)
+    * [Latency optimizations](#latency-optimizations)
+    * [Concurrency optimizations](#concurrency-optimizations)
+<!-- TOC -->
+
+## Reading the timestamp value
+
+## HTTP endpoints
+
+`/up` exists to check if the HTTP server is running
+`/ready` checks to see if the node has joined the cluster and is ready to serve requests
+
+`/members` returns a JSON in the shape of:
+
+```json
+{
+  "leader": {
+    "nodeID": 1,
+    "addr": "addr1"
+  },
+  "members": [
+    {
+      "nodeID": 1,
+      "addr": "addr1"
+    }
+  ]
+}
+```
+
+This is used for client-aware routing.
+
+## Client design
+
+See [CLIENT_DESIGN.md](CLIENT_DESIGN.md)
+
 ## Latency and concurrency
 
 Optimizations have been made to reduce the latency and increase concurrency as much as possible, trading concurrency for latency where needed.
