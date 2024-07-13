@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/danthegoodman1/EpicEpoch/ring"
 	"github.com/danthegoodman1/EpicEpoch/utils"
 	"github.com/lni/dragonboat/v3"
 	"github.com/lni/dragonboat/v3/config"
@@ -57,7 +56,7 @@ func StartRaft() (*EpochHost, error) {
 		epochIndex:          atomic.Uint64{},
 		lastEpoch:           atomic.Uint64{},
 		readerAgentStopChan: make(chan struct{}),
-		requestBuffer:       ring.NewRingBuffer[*pendingRead](utils.TimestampRequestBuffer),
+		requestChan:         make(chan *pendingRead, utils.TimestampRequestBuffer),
 		readerAgentReading:  atomic.Bool{},
 		pokeChan:            make(chan struct{}),
 		updateTicker:        time.NewTicker(time.Millisecond * time.Duration(utils.EpochIntervalMS)),

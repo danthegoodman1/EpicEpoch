@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/danthegoodman1/EpicEpoch/ring"
 	"github.com/danthegoodman1/EpicEpoch/utils"
 	"github.com/lni/dragonboat/v3"
 	"sync/atomic"
@@ -26,7 +25,7 @@ type (
 
 		readerAgentStopChan chan struct{}
 
-		requestBuffer *ring.RingBuffer[*pendingRead]
+		requestChan chan *pendingRead
 
 		readerAgentReading atomic.Bool
 
@@ -37,8 +36,8 @@ type (
 	}
 
 	pendingRead struct {
-		// callbackRing is a ring buffer to write back to with the produced timestamp
-		callbackRing *ring.RingBuffer[[]byte]
+		// callbackChan is a ring buffer to write back to with the produced timestamp
+		callbackChan chan []byte
 	}
 )
 
@@ -60,7 +59,7 @@ func (e *EpochHost) readerAgentLoop() {
 // generateTimestamps generates timestamps for pending requests, and handles looping if more requests come in
 func (e *EpochHost) generateTimestamps() {
 	// Capture the current pending requests so there's no case we get locked
-	pendingRequests := e.requestBuffer.Len()
+	pendingRequests := len(e.requestChan)
 
 	// Read the epoch
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(raftRttMs)*100)
@@ -113,12 +112,7 @@ func (e *EpochHost) generateTimestamps() {
 
 	for range pendingRequests {
 		// Write to the pending requests
-		req, err := e.requestBuffer.Poll(time.Millisecond * 100) // some timeout (this is quite long for a ring buffer)
-		if err != nil {
-			// This means that we lost items in the buffer somehow, very bad, must crash
-			logger.Fatal().Err(err).Msg("timed out polling the ring buffer, did items get lost in the ring buffer?")
-			return
-		}
+		req := <-e.requestChan
 
 		reqIndex := e.epochIndex.Add(1)
 		// Build the timestamp
@@ -126,10 +120,14 @@ func (e *EpochHost) generateTimestamps() {
 		binary.BigEndian.PutUint64(timestamp[:8], currentEpoch.Epoch)
 		binary.BigEndian.PutUint64(timestamp[8:], reqIndex)
 
-		req.callbackRing.Put(timestamp)
+		select {
+		case req.callbackChan <- timestamp:
+		default:
+			logger.Warn().Msg("did not have listener on callback chan when generating timestamp")
+		}
 	}
 
-	if e.requestBuffer.Len() > 0 {
+	if len(e.requestChan) > 0 {
 		// There are more requests, generating more timestamps
 		logger.Debug().Msg("found more requests in ring buffer, generating more timestamps")
 		e.generateTimestamps()
@@ -153,10 +151,13 @@ var ErrNoDeadline = errors.New("missing deadline in context")
 
 // GetUniqueTimestamp gets a unique hybrid timestamp to serve to a client
 func (e *EpochHost) GetUniqueTimestamp(ctx context.Context) ([]byte, error) {
-	pr := &pendingRead{callbackRing: ring.NewRingBuffer[[]byte](1)}
+	pr := &pendingRead{callbackChan: make(chan []byte, 1)}
 
-	// Register entry in ring buffer
-	e.requestBuffer.Put(pr)
+	// Register request
+	err := utils.WriteWithContext(ctx, e.requestChan, pr)
+	if err != nil {
+		return nil, fmt.Errorf("error writing nil, pending request to request buffer: %w", err)
+	}
 
 	// Try to poke the reader goroutine
 	select {
@@ -166,15 +167,10 @@ func (e *EpochHost) GetUniqueTimestamp(ctx context.Context) ([]byte, error) {
 		logger.Debug().Msg("poke chan had nothing waiting")
 	}
 
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		return nil, ErrNoDeadline
-	}
-
-	// Wait for the response...
-	timestamp, err := pr.callbackRing.Poll(deadline.Sub(time.Now()))
+	// Wait for the response
+	timestamp, err := utils.ReadWithContext(ctx, pr.callbackChan)
 	if err != nil {
-		return nil, fmt.Errorf("error in callbackRing.Get(): %w", err)
+		return nil, fmt.Errorf("error reading from callback channel with context: %w", err)
 	}
 
 	return timestamp, nil
