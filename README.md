@@ -11,12 +11,12 @@ Used for distributed systems and clients, like distributed transactions. Self-su
   * [Getting started](#getting-started)
   * [Configuration (env vars)](#configuration-env-vars)
   * [Reading the timestamp value](#reading-the-timestamp-value)
-  * [HTTP endpoints (h1.1 & h2c)](#http-endpoints-h11--h2c)
+  * [HTTP endpoints (HTTP/1.1, H2C, HTTP/3 self-signed)](#http-endpoints-http11-h2c-http3-self-signed)
   * [Client design](#client-design)
   * [Latency and concurrency](#latency-and-concurrency)
     * [Latency optimizations](#latency-optimizations)
     * [Concurrency optimizations](#concurrency-optimizations)
-  * [Performance testing](#performance-testing)
+  * [Performance testing (HTTP/1.1)](#performance-testing-http11)
     * [Simple test (buffer 10k)](#simple-test-buffer-10k)
     * [Performance test (buffer 10k)](#performance-test-buffer-10k)
 <!-- TOC -->
@@ -41,7 +41,7 @@ This ensures that transactions are always unique and in order, latency and concu
 
 This also ensures that the request and response are each a single TCP frame.
 
-## HTTP endpoints (h1.1 & h2c)
+## HTTP endpoints (HTTP/1.1, H2C, HTTP/3 self-signed)
 
 `/up` exists to check if the HTTP server is running
 `/ready` checks to see if the node has joined the cluster and is ready to serve requests
