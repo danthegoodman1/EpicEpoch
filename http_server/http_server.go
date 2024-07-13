@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/danthegoodman1/EpicEpoch/gologger"
@@ -90,7 +91,7 @@ func StartHTTPServer(epochHost *raft.EpochHost) *HTTPServer {
 
 		// Create HTTP/3 server
 		s.quicServer = &http3.Server{
-			Addr:      ":443",
+			Addr:      listener.Addr().String(),
 			Handler:   s.Echo,
 			TLSConfig: tlsConfig,
 		}
@@ -170,21 +171,24 @@ func (s *HTTPServer) GetTimestamp(c echo.Context) error {
 	}
 
 	if leader != utils.NodeID {
-		membership, err := s.EpochHost.GetMembership(ctx)
-		if err != nil {
-			return fmt.Errorf("error in EpochHost.GetMembership: %w", err)
-		}
-
-		return c.Redirect(http.StatusPermanentRedirect, membership.Leader.Addr)
+		return c.String(http.StatusConflict, fmt.Sprintf("node (%d) is not the leader (%d)", utils.NodeID, leader))
 	}
 
-	// Get a timestamp
-	timestamp, err := s.EpochHost.GetUniqueTimestamp(ctx)
+	// Get one or more timestamps
+	count := 1
+	if n := c.QueryParam("n"); n != "" {
+		count, err = strconv.Atoi(n)
+		if err != nil || count < 1 {
+			return c.String(http.StatusBadRequest, fmt.Sprintf("invalid n param, must be a number >= 1 if provided"))
+		}
+	}
+
+	payload, err := s.EpochHost.GetUniqueTimestamp(ctx, count)
 	if err != nil {
 		return fmt.Errorf("error in EpochHost.GetUniqueTimestamp: %w", err)
 	}
 
-	return c.Blob(http.StatusOK, "application/octet-stream", timestamp)
+	return c.Blob(http.StatusOK, "application/octet-stream", payload)
 }
 
 func (s *HTTPServer) GetMembership(c echo.Context) error {

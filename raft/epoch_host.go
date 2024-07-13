@@ -3,7 +3,6 @@ package raft
 import (
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"github.com/danthegoodman1/EpicEpoch/utils"
 	"github.com/lni/dragonboat/v3"
@@ -38,6 +37,7 @@ type (
 	pendingRead struct {
 		// callbackChan is a channel to write back to with the produced timestamp
 		callbackChan chan []byte
+		count        int
 	}
 )
 
@@ -118,11 +118,16 @@ func (e *EpochHost) generateTimestamps() {
 		// Write to the pending requests
 		req := <-e.requestChan
 
-		reqIndex := e.epochIndex.Add(1)
 		// Build the timestamp
-		timestamp := make([]byte, 16) // 8 for epoch, 8 for index
-		binary.BigEndian.PutUint64(timestamp[:8], currentEpoch.Epoch)
-		binary.BigEndian.PutUint64(timestamp[8:], reqIndex)
+		timestamp := make([]byte, 16*req.count) // 8 for epoch, 8 for index, multiply for each
+		logger.Debug().Msgf("writing for %d", req.count)
+		for i := 0; i < req.count; i++ {
+			reqIndex := e.epochIndex.Add(1)
+			offset := i * 16
+			fmt.Println("writing to bounds", offset, offset+16)
+			binary.BigEndian.PutUint64(timestamp[offset:offset+8], currentEpoch.Epoch)
+			binary.BigEndian.PutUint64(timestamp[offset+8:offset+16], reqIndex)
+		}
 
 		select {
 		case req.callbackChan <- timestamp:
@@ -152,11 +157,12 @@ func (e *EpochHost) Stop() {
 	e.nodeHost.Stop()
 }
 
-var ErrNoDeadline = errors.New("missing deadline in context")
-
 // GetUniqueTimestamp gets a unique hybrid timestamp to serve to a client
-func (e *EpochHost) GetUniqueTimestamp(ctx context.Context) ([]byte, error) {
-	pr := &pendingRead{callbackChan: make(chan []byte, 1)}
+func (e *EpochHost) GetUniqueTimestamp(ctx context.Context, count int) ([]byte, error) {
+	if count < 1 {
+		return nil, fmt.Errorf("count must be >= 1")
+	}
+	pr := &pendingRead{callbackChan: make(chan []byte, 1), count: count}
 
 	// Register request
 	err := utils.WriteWithContext(ctx, e.requestChan, pr)

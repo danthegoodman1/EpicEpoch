@@ -72,7 +72,9 @@ This also ensures that the request and response are each a single TCP frame.
 
 `/timestamp` can be used to fetch a unique monotonic 16 byte hybrid timestamp value (this is the one you want to use).
 
-This will automatically redirect (308) if the server requested to is not the leader. Clients should not lean on this at scale, as this causes a Raft read to get the address of the leader. Clients should use client-aware routing to update their local address cache if they encounter this (see [CLIENT_DESIGN.md](CLIENT_DESIGN.md)).
+This will return a 409 if the node is not the leader. Clients should use client-aware routing to update their local address cache if they encounter this (see [CLIENT_DESIGN.md](CLIENT_DESIGN.md)).
+
+Can use the query param `n` to specify a number >= 1, which will return multiple timestamps that are guaranteed to share the same epoch and have a sequential epoch index. These timestamps are appended to each other, so `n=2` will return a 32 byte body.
 
 
 `/members` returns a JSON in the shape of:
