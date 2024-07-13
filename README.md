@@ -225,16 +225,16 @@ raft.(*EpochHost).generateTimestamps() > Served 1 requests in 1.35µs
 
 Combined with:
 ```
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 152.25µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 274.583µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 234.166µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 191.709µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 188.583µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 196.792µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 203.333µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 145.833µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 169.792µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 226.542µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 152.25µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 274.583µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 234.166µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 191.709µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 188.583µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 196.792µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 203.333µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 145.833µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 169.792µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 226.542µs
 ```
 
 It's quite clear that either k6 (the load tester), or it's lack of h2c/h3 support is to blame, considering the known performance of the echo framework, the fact that it used ~70% of available CPU on the machine, and the logs above.
