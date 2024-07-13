@@ -122,7 +122,7 @@ To ensure that this node is the leader, a linearizable read across the cluster m
 
 Using k6 on a 200 core C3D from GCP, running all 3 instances and the test, the following was observed.
 
-k6 was not able to test with HTTP/2 cleartext unfortunately, so the performance is greatly degraded.
+TLDR: Lack of h2c or h3 support from k6, and not tuning the tcp stack or ulimit on the machine greatly reduced potential results. This could easily do 1M+ on the same hardware with more capable clients.
 
 ### Simple test (buffer 10k)
 
@@ -204,7 +204,7 @@ followers using 50-80% cpu
 running (4m00.0s), 00000/10000 VUs, 34289034 complete and 0 interrupted iterations
 ```
 
-It seems like the request completion rate did not grow much past 300 vus, so considering that we ran up to 10k vus I believe this is either limited by the HTTP framework or testing framework, as the request handler was quite fast (<1ms).
+It seems like the request completion rate did not grow much past 300 vus, so considering that we ran up to 10k vus this is HTTP/1.1 rearing it's less performant head.
 
 Some log output of the duration between reading from raft and writing to the pending request channels with incremented hybrid timestamps:
 ```
@@ -227,16 +227,18 @@ raft.(*EpochHost).generateTimestamps() > Served 1 requests in 1.35µs
 
 Combined with:
 ```
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 152.25µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 274.583µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 234.166µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 191.709µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 188.583µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 196.792µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 203.333µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 145.833µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 169.792µs
-http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 226.542µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 152.25µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 274.583µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 234.166µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 191.709µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 188.583µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 196.792µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 203.333µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 145.833µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 169.792µs
+http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 226.542µs
 ```
 
 It's quite clear that either k6 (the load tester), or it's lack of h2c/h3 support is to blame, considering the known performance of the echo framework, the fact that it used ~70% of available CPU on the machine, and the logs above.
+
+There would also likely be massive performance gains by increaseing the ulimit and tuning the tcp stack.
