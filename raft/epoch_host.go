@@ -36,7 +36,7 @@ type (
 	}
 
 	pendingRead struct {
-		// callbackChan is a ring buffer to write back to with the produced timestamp
+		// callbackChan is a channel to write back to with the produced timestamp
 		callbackChan chan []byte
 	}
 )
@@ -134,7 +134,7 @@ func (e *EpochHost) generateTimestamps() {
 
 	if len(e.requestChan) > 0 {
 		// There are more requests, generating more timestamps
-		logger.Info().Msg("found more requests in ring buffer, generating more timestamps")
+		logger.Info().Msg("found more requests in request channel, generating more timestamps")
 		e.generateTimestamps()
 	}
 }
