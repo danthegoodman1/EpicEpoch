@@ -120,6 +120,7 @@ func (s *HTTPServer) ReadyCheck(c echo.Context) error {
 func (s *HTTPServer) GetTimestamp(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(c.Request().Context(), time.Second)
 	defer cancel()
+	st := time.Now()
 	// Verify that this is the raft leader
 	leader, available, err := s.EpochHost.GetLeader()
 	if err != nil {
@@ -141,6 +142,7 @@ func (s *HTTPServer) GetTimestamp(c echo.Context) error {
 		return fmt.Errorf("error in EpochHost.GetUniqueTimestamp: %w", err)
 	}
 
+	logger.Info().Msgf("handled request (%s) in %+v", c.Request().Proto, time.Since(st))
 	return c.Blob(http.StatusOK, "application/octet-stream", timestamp)
 }
 

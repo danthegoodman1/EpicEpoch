@@ -91,9 +91,11 @@ As a result the latency ceiling of request time is roughly the latency of a line
 
 To ensure that this node is the leader, a linearizable read across the cluster must take place, but many requests can share this via request collapsing.
 
-## Performance testing
+## Performance testing (HTTP/1.1)
 
-Using k6 on a 200 core C3D from GCP, running all 3 instances and the test, the following was observed:
+Using k6 on a 200 core C3D from GCP, running all 3 instances and the test, the following was observed.
+
+k6 was not able to test with HTTP/2 cleartext unfortunately, so the performance is greatly degraded.
 
 ### Simple test (buffer 10k)
 
@@ -179,21 +181,35 @@ It seems like the request completion rate did not grow much past 300 vus, so con
 
 Some log output of the duration between reading from raft and writing to the pending request channels with incremented hybrid timestamps:
 ```
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 27 requests in 14.72µs
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 1 requests in 5.75µs
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 6 requests in 5.9µs
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 2 requests in 6.52µs
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 1 requests in 1.78µs
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 67 requests in 63.51µs
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 87 requests in 83.8µs
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 212 requests in 2.81964ms
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 7139 requests in 6.427489ms
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 26 requests in 497.96µs
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 2034 requests in 1.50941ms
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 1 requests in 4.66µs
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 1 requests in 3.84µs
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 1 requests in 1.55µs
-1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 1 requests in 1.35µs
+raft.(*EpochHost).generateTimestamps() > Served 27 requests in 14.72µs
+raft.(*EpochHost).generateTimestamps() > Served 1 requests in 5.75µs
+raft.(*EpochHost).generateTimestamps() > Served 6 requests in 5.9µs
+raft.(*EpochHost).generateTimestamps() > Served 2 requests in 6.52µs
+raft.(*EpochHost).generateTimestamps() > Served 1 requests in 1.78µs
+raft.(*EpochHost).generateTimestamps() > Served 67 requests in 63.51µs
+raft.(*EpochHost).generateTimestamps() > Served 87 requests in 83.8µs
+raft.(*EpochHost).generateTimestamps() > Served 212 requests in 2.81964ms
+raft.(*EpochHost).generateTimestamps() > Served 7139 requests in 6.427489ms
+raft.(*EpochHost).generateTimestamps() > Served 26 requests in 497.96µs
+raft.(*EpochHost).generateTimestamps() > Served 2034 requests in 1.50941ms
+raft.(*EpochHost).generateTimestamps() > Served 1 requests in 4.66µs
+raft.(*EpochHost).generateTimestamps() > Served 1 requests in 3.84µs
+raft.(*EpochHost).generateTimestamps() > Served 1 requests in 1.55µs
+raft.(*EpochHost).generateTimestamps() > Served 1 requests in 1.35µs
 ```
 
-Looks like GC could be causing some issues, but without some go perf investigations I almost want to blame the http testing framework for not loading evenly.
+Combined with:
+```
+http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 152.25µs
+http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 274.583µs
+http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 234.166µs
+http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 191.709µs
+http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 188.583µs
+http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 196.792µs
+http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 203.333µs
+http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 145.833µs
+http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 169.792µs
+http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 226.542µs
+```
+
+Indicate that HTTP/1.1 (and thus the testing framework for not supporting HTTP/2 or 3) is to blame.
