@@ -120,7 +120,7 @@ To ensure that this node is the leader, a linearizable read across the cluster m
 
 Using k6 on a 200 core C3D from GCP, running all 3 instances and the test, the following was observed.
 
-k6 was not able to test with HTTP/2 cleartext unfortunately, so the performance is greatly degraded.
+TLDR: Lack of h2c or h3 support from k6, and not tuning the tcp stack or ulimit on the machine greatly reduced potential results. This could easily do 1M+ on the same hardware with more capable clients.
 
 ### Simple test (buffer 10k)
 
