@@ -238,3 +238,5 @@ http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handle
 ```
 
 It's quite clear that either k6 (the load tester), or it's lack of h2c/h3 support is to blame, considering the known performance of the echo framework, the fact that it used ~70% of available CPU on the machine, and the logs above.
+
+There would also likely be massive performance gains by increaseing the ulimit and tuning the tcp stack.
