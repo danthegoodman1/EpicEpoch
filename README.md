@@ -29,6 +29,8 @@ WIP
 - data directory
 - some info about disk usage
 
+Note that the HTTP/3 server will write a `cert.pem` and `key.pem` in the same directory as the binary if they do not already exist.
+
 ## Configuration (env vars)
 
 WIP
