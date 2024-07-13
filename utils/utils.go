@@ -323,3 +323,22 @@ func MustMarshal(v any) []byte {
 	}
 	return b
 }
+
+func ReadWithContext[T any](ctx context.Context, ch chan T) (res T, err error) {
+	select {
+	case val := <-ch:
+		return val, nil
+	case <-ctx.Done():
+		err = ctx.Err()
+		return
+	}
+}
+
+func WriteWithContext[T any](ctx context.Context, ch chan<- T, val T) error {
+	select {
+	case ch <- val:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
