@@ -212,4 +212,4 @@ http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handle
 http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 226.542µs
 ```
 
-Indicate that HTTP/1.1 (and thus the testing framework for not supporting HTTP/2 or 3) is to blame.
+It's quite clear that either k6 (the load tester), or it's lack of h2c/h3 support is to blame, considering the known performance of the echo framework and the logs above.
