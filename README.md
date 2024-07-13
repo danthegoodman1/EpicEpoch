@@ -8,6 +8,7 @@ Used for distributed systems and clients, like distributed transactions. Self-su
 * [EpicEpoch](#epicepoch)
   * [Getting started](#getting-started)
   * [Configuration (env vars)](#configuration-env-vars)
+  * [Motivation (Why make this?)](#motivation-why-make-this)
   * [Reading the timestamp value](#reading-the-timestamp-value)
   * [HTTP endpoints (HTTP/1.1, H2C, HTTP/3 self-signed)](#http-endpoints-http11-h2c-http3-self-signed)
   * [Client design](#client-design)
@@ -23,15 +24,37 @@ Used for distributed systems and clients, like distributed transactions. Self-su
 
 WIP
 
-- running
-- data directory
-- some info about disk usage
+- cmd to run
+- data directory `_raft` folder, snapshots at `epoch-{nodeID}.json`, never delete these unless you know what you're doing.
+- some info about disk usage (it's quite small)
 
 Note that the HTTP/3 server will write a `cert.pem` and `key.pem` in the same directory as the binary if they do not already exist.
 
 ## Configuration (env vars)
 
 WIP
+
+## Motivation (Why make this?)
+
+Time is perhaps the most important thing to a distributed system.
+
+Without reliable time handling, no guarantees like consistency and atomicity can be made. You can't guarantee commits happen, or that they happen with the expected isolation. You can't guarantee that your data was replicated. It's a big deal.
+
+I won't dive in to the details as to why time is so important, or so hard, for distributed systems, but just know that it's the bane of dist sys eng's existence. If we had perfect clocks, then dist systems would be orders of magnitude faster, have far fewer bugs, and be far easier to develop.
+
+But we don't have perfect clocks, so we have to play some tricks instead like using hybrid timestamps: Combining real time and "fake time" in the form of an incrementing counter that's reset when the real time changes.
+
+In building my own [Percolator clients](https://github.com/danthegoodman1/Percolators), the last remaining task was to have a global timestamp oracle that could be used to guarantee monotonic hybrid timestamps for transactions. This, as a standalone service, didn't really exist. Plus I thought it would be super fun to make (it was) as I'm arguably obsessed with distributed systems.
+
+So EpicEpoch (name change possibly pending) was born for that sole purpose: Serve monotonic hybrid timestamps as fast as possible, to as many clients as possible.
+
+Building a bespoke timestamp oracle service has massive benefits over using something like etcd: performance and latency.
+
+The system is designed with the sole purpose of serving unique timestamps as fast as possible. It only needs to replicate a single value over Raft, and store 46 bytes to disk as a raft snapshot. It leverages linearizable reads, request collapsing, and an efficient actor model to ensure that it can maximize the available compute to serve timestamps at the highest possible concurrency. It supports HTTP/1.1, HTTP/2 (cleartext), and HTTP/3 to give clients the most performant option they can support.
+
+Generalized solutions couldn't meet 1% of the performance EpicEpoch can for monotonic hybrid timestamps while also maintain guarantees during failure scenarios (I'm looking at you in particular, Redis).
+
+This is not considered production ready (at least for anyone but me, or who ever is ready to write code about it). There is still lots of testing, instrumenting, documentation, and more to be done before I'd dare to suggest someone else try it. At a minimum, it can serve as an implementation reference.
 
 ## Reading the timestamp value
 
