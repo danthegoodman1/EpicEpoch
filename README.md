@@ -212,4 +212,4 @@ http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handle
 http_server/http_server.go:145 http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 226.542µs
 ```
 
-It's quite clear that either k6 (the load tester), or it's lack of h2c/h3 support is to blame, considering the known performance of the echo framework and the logs above.
+It's quite clear that either k6 (the load tester), or it's lack of h2c/h3 support is to blame, considering the known performance of the echo framework, the fact that it used ~70% of available CPU on the machine, and the logs above.
