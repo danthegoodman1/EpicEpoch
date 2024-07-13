@@ -113,7 +113,7 @@ func (e *EpochHost) generateTimestamps() {
 
 	for range pendingRequests {
 		// Write to the pending requests
-		req, err := e.requestBuffer.Poll(time.Millisecond) // some timeout (this is quite long for a ring buffer)
+		req, err := e.requestBuffer.Poll(time.Millisecond * 10) // some timeout (this is quite long for a ring buffer)
 		if err != nil {
 			// This means that we lost items in the buffer somehow, very bad, must crash
 			logger.Fatal().Err(err).Msg("timed out polling the ring buffer, did items get lost in the ring buffer?")
