@@ -60,8 +60,10 @@ func (e *EpochHost) readerAgentLoop() {
 func (e *EpochHost) generateTimestamps() {
 	// Capture the current pending requests so there's no case we get locked
 	pendingRequests := len(e.requestChan)
+	logger.Info().Msgf("Serving %d pending requests", pendingRequests)
 
 	// Read the epoch
+	s := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(raftRttMs)*100)
 	defer cancel()
 	currentEpochI, err := e.nodeHost.SyncRead(ctx, ClusterID, nil)
@@ -70,6 +72,7 @@ func (e *EpochHost) generateTimestamps() {
 		logger.Fatal().Err(err).Msg("error in nodeHost.SyncRead")
 		return
 	}
+	logger.Info().Msgf("Read from raft in %+v", time.Since(s))
 
 	currentEpoch, ok := currentEpochI.(PersistenceEpoch)
 	if !ok {
@@ -110,6 +113,7 @@ func (e *EpochHost) generateTimestamps() {
 		e.epochIndex.Store(0)
 	}
 
+	s = time.Now()
 	for range pendingRequests {
 		// Write to the pending requests
 		req := <-e.requestChan
@@ -126,10 +130,11 @@ func (e *EpochHost) generateTimestamps() {
 			logger.Warn().Msg("did not have listener on callback chan when generating timestamp")
 		}
 	}
+	logger.Info().Msgf("Served requests in %+v", time.Since(s))
 
 	if len(e.requestChan) > 0 {
 		// There are more requests, generating more timestamps
-		logger.Debug().Msg("found more requests in ring buffer, generating more timestamps")
+		logger.Info().Msg("found more requests in ring buffer, generating more timestamps")
 		e.generateTimestamps()
 	}
 }
