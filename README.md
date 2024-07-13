@@ -87,3 +87,93 @@ The nature of the hybrid timestamp allows concurrency limited only by the epoch 
 As a result the latency ceiling of request time is roughly the latency of a linearizable read through raft + the time to respond to all pending requests. The raft read is amortized across all pending requests.
 
 To ensure that this node is the leader, a linearizable read across the cluster must take place, but many requests can share this via request collapsing.
+
+## Performance testing
+
+Using k6 on a 200 core C3D from GCP, running all 3 instances and the test, the following was observed:
+
+### Simple test (buffer 10k)
+
+5-7 cores used at peak
+
+followers using 50-80% cpu
+
+```
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 2m30s max duration (incl. graceful stop):
+              * default: Up to 100 looping VUs for 2m0s over 3 stages (gracefulRampDown: 30s, gracefulStop: 30s)
+
+
+running (0m22.0s), 073/100 VUs, 1385955 complete and 0 interrupted iteration
+
+     ✗ is status 200
+      ↳  99% — ✓ 10270369 / ✗ 443
+
+     checks.........................: 99.99%   ✓ 10270369     ✗ 443
+     data_received..................: 1.5 GB   13 MB/s
+     data_sent......................: 914 MB   7.6 MB/s
+     http_req_blocked...............: avg=1.42µs   min=320ns    med=1.1µs    max=51.93ms p(90)=1.88µs  p(95)=2.23µs
+     http_req_connecting............: avg=1ns      min=0s       med=0s       max=1.07ms  p(90)=0s      p(95)=0s
+   ✓ http_req_duration..............: avg=822.67µs min=132.05µs med=576.33µs max=1s      p(90)=1.21ms  p(95)=1.78ms
+       { expected_response:true }...: avg=779.52µs min=132.05µs med=576.33µs max=1s      p(90)=1.21ms  p(95)=1.78ms
+     ✓ { staticAsset:yes }..........: avg=0s       min=0s       med=0s       max=0s      p(90)=0s      p(95)=0s
+   ✓ http_req_failed................: 0.00%    ✓ 443          ✗ 10270369
+     http_req_receiving.............: avg=21.84µs  min=5.02µs   med=18.35µs  max=51.44ms p(90)=25.42µs p(95)=30.34µs
+     http_req_sending...............: avg=7.32µs   min=1.71µs   med=5.85µs   max=31.67ms p(90)=7.98µs  p(95)=9.27µs
+     http_req_tls_handshaking.......: avg=0s       min=0s       med=0s       max=0s      p(90)=0s      p(95)=0s
+     http_req_waiting...............: avg=793.5µs  min=122.14µs med=548.77µs max=1s      p(90)=1.17ms  p(95)=1.73ms
+     http_reqs......................: 10270812 85589.648371/s
+     iteration_duration.............: avg=871.13µs min=151.51µs med=621.92µs max=1s      p(90)=1.26ms  p(95)=1.86ms
+     iterations.....................: 10270812 85589.648371/s
+     vus............................: 1        min=1          max=100
+     vus_max........................: 100      min=100        max=100
+
+
+running (2m00.0s), 000/100 VUs, 10270812 complete and 0 interrupted iterations
+```
+
+### Performance test (buffer 10k)
+
+63-70 cores used at peak during the test
+55-65 cores used by the test runner
+<7GB of ram used
+
+followers using 50-80% cpu
+
+```
+     scenarios: (100.00%) 1 scenario, 10000 max VUs, 4m30s max duration (incl. graceful stop):
+              * default: Up to 10000 looping VUs for 4m0s over 7 stages (gracefulRampDown: 30s, gracefulStop: 30s)
+
+
+     ✗ is status 200
+      ↳  99% — ✓ 34007695 / ✗ 74
+
+     checks.........................: 99.99%   ✓ 34007695      ✗ 74
+     data_received..................: 5.0 GB   21 MB/s
+     data_sent......................: 3.0 GB   13 MB/s
+     http_req_blocked...............: avg=9.19µs   min=320ns    med=1.9µs   max=384.43ms p(90)=2.71µs  p(95)=3.25µs
+     http_req_connecting............: avg=346ns    min=0s       med=0s      max=135.02ms p(90)=0s      p(95)=0s
+   ✓ http_req_duration..............: avg=18.58ms  min=154.27µs med=7.91ms  max=1s       p(90)=69.5ms  p(95)=86.5ms
+       { expected_response:true }...: avg=18.58ms  min=154.27µs med=7.91ms  max=467.49ms p(90)=69.49ms p(95)=86.5ms
+     ✓ { staticAsset:yes }..........: avg=0s       min=0s       med=0s      max=0s       p(90)=0s      p(95)=0s
+   ✓ http_req_failed................: 0.00%    ✓ 74            ✗ 34007695
+     http_req_receiving.............: avg=154.28µs min=4.98µs   med=17.16µs max=389.76ms p(90)=27.36µs p(95)=43.39µs
+     http_req_sending...............: avg=82.05µs  min=1.8µs    med=6.39µs  max=389.83ms p(90)=9.5µs   p(95)=23.19µs
+     http_req_tls_handshaking.......: avg=0s       min=0s       med=0s      max=0s       p(90)=0s      p(95)=0s
+     http_req_waiting...............: avg=18.35ms  min=136.46µs med=7.8ms   max=1s       p(90)=69.15ms p(95)=86.16ms
+     http_reqs......................: 34007769 141694.957197/s
+     iteration_duration.............: avg=31ms     min=176.22µs med=19.62ms max=1s       p(90)=88.69ms p(95)=110.2ms
+     iterations.....................: 34007769 141694.957197/s
+     vus............................: 6        min=6           max=10000
+     vus_max........................: 10000    min=10000       max=10000
+
+
+running (4m00.0s), 00000/10000 VUs, 34007769 complete and 0 interrupted iterations
+```
+
+It seems like the request completion rate did not grow much past 300 vus, so considering that we ran up to 10k vus I believe this is either limited by the HTTP framework or testing framework
+
+### Performance test (buffer 1M):
+
+```
+
+```

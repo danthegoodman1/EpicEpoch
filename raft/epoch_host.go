@@ -130,7 +130,7 @@ func (e *EpochHost) generateTimestamps() {
 			logger.Warn().Msg("did not have listener on callback chan when generating timestamp")
 		}
 	}
-	logger.Debug().Msgf("Served requests in %+v", time.Since(s))
+	logger.Info().Msgf("Served requests in %+v", time.Since(s))
 
 	if len(e.requestChan) > 0 {
 		// There are more requests, generating more timestamps
