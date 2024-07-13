@@ -202,7 +202,7 @@ followers using 50-80% cpu
 running (4m00.0s), 00000/10000 VUs, 34289034 complete and 0 interrupted iterations
 ```
 
-It seems like the request completion rate did not grow much past 300 vus, so considering that we ran up to 10k vus I believe this is either limited by the HTTP framework or testing framework, as the request handler was quite fast (<1ms).
+It seems like the request completion rate did not grow much past 300 vus, so considering that we ran up to 10k vus this is HTTP/1.1 rearing it's less performant head.
 
 Some log output of the duration between reading from raft and writing to the pending request channels with incremented hybrid timestamps:
 ```
