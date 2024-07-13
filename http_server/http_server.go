@@ -170,8 +170,12 @@ func (s *HTTPServer) GetTimestamp(c echo.Context) error {
 	}
 
 	if leader != utils.NodeID {
-		// TODO: redirect
-		return c.String(http.StatusConflict, fmt.Sprintf("This (%d) is not the leader (%d)", utils.NodeID, leader))
+		membership, err := s.EpochHost.GetMembership(ctx)
+		if err != nil {
+			return fmt.Errorf("error in EpochHost.GetMembership: %w", err)
+		}
+
+		return c.Redirect(http.StatusPermanentRedirect, membership.Leader.Addr)
 	}
 
 	// Get a timestamp

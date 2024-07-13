@@ -70,7 +70,7 @@ This also ensures that the request and response are each a single TCP frame.
 `/ready` checks to see if the node has joined the cluster and is ready to serve requests
 
 
-`/timestamp` can be used to fetch the 16 byte timestamp value.
+`/timestamp` can be used to fetch a unique monotonic 16 byte hybrid timestamp value (this is the one you want to use).
 
 
 `/members` returns a JSON in the shape of:
