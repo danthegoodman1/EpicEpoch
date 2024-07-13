@@ -191,3 +191,47 @@ func (e *EpochHost) proposeNewEpoch(newEpoch uint64) error {
 
 	return nil
 }
+
+type (
+	Membership struct {
+		Leader  Member   `json:"leader"`
+		Members []Member `json:"members"`
+	}
+
+	Member struct {
+		NodeID uint64 `json:"nodeID"`
+		Addr   string `json:"addr"`
+	}
+)
+
+func (e *EpochHost) GetMembership(ctx context.Context) (*Membership, error) {
+	leader, available, err := e.nodeHost.GetLeaderID(ClusterID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting membership: %e", err)
+	}
+
+	if !available {
+		return nil, fmt.Errorf("raft membership not avilable")
+	}
+
+	membership, err := e.nodeHost.SyncGetClusterMembership(ctx, ClusterID)
+	if err != nil {
+		return nil, fmt.Errorf("error in nodeHost.SyncGetClusterMembership: %w", err)
+	}
+
+	m := &Membership{}
+	for id, node := range membership.Nodes {
+		if id == leader {
+			m.Leader = Member{
+				NodeID: id,
+				Addr:   node,
+			}
+		}
+		m.Members = append(m.Members, Member{
+			NodeID: id,
+			Addr:   node,
+		})
+	}
+
+	return m, nil
+}

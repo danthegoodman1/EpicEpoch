@@ -52,7 +52,8 @@ func StartHTTPServer(epochHost *raft.EpochHost) *HTTPServer {
 
 	s.Echo.GET("/up", s.UpCheck)
 	s.Echo.GET("/ready", s.ReadyCheck)
-	s.Echo.GET("/timestamp", ccHandler(s.GetTimestamp))
+	s.Echo.GET("/timestamp", s.GetTimestamp)
+	s.Echo.GET("/membership", s.GetMembership)
 
 	s.Echo.Listener = listener
 	go func() {
@@ -116,7 +117,7 @@ func (s *HTTPServer) ReadyCheck(c echo.Context) error {
 	return c.String(http.StatusOK, fmt.Sprintf("leader=%d nodeID=%d raftAvailable=%t\n", leader, utils.NodeID, available))
 }
 
-func (s *HTTPServer) GetTimestamp(c *CustomContext) error {
+func (s *HTTPServer) GetTimestamp(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(c.Request().Context(), time.Second)
 	defer cancel()
 	// Verify that this is the raft leader
@@ -141,6 +142,18 @@ func (s *HTTPServer) GetTimestamp(c *CustomContext) error {
 	}
 
 	return c.Blob(http.StatusOK, "application/octet-stream", timestamp)
+}
+
+func (s *HTTPServer) GetMembership(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(c.Request().Context(), time.Second)
+	defer cancel()
+
+	membership, err := s.EpochHost.GetMembership(ctx)
+	if err != nil {
+		return fmt.Errorf("error in EpochHost.GetMembership: %w", err)
+	}
+
+	return c.JSON(http.StatusOK, membership)
 }
 
 func (s *HTTPServer) Shutdown(ctx context.Context) error {
