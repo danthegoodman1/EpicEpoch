@@ -71,6 +71,7 @@ This also ensures that the request and response are each a single TCP frame.
 
 
 `/timestamp` can be used to fetch a unique monotonic 16 byte hybrid timestamp value (this is the one you want to use).
+
 This will automatically redirect (308) if the server requested to is not the leader. Clients should not lean on this at scale, as this causes a Raft read to get the address of the leader. Client should use client-aware routing to update their local address cache if they encounter this (see [CLIENT_DESIGN.md](CLIENT_DESIGN.md)).
 
 
