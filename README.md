@@ -16,6 +16,9 @@ Used for distributed systems and clients, like distributed transactions. Self-su
   * [Latency and concurrency](#latency-and-concurrency)
     * [Latency optimizations](#latency-optimizations)
     * [Concurrency optimizations](#concurrency-optimizations)
+  * [Performance testing](#performance-testing)
+    * [Simple test (buffer 10k)](#simple-test-buffer-10k)
+    * [Performance test (buffer 10k)](#performance-test-buffer-10k)
 <!-- TOC -->
 
 ## Getting started
@@ -133,6 +136,8 @@ running (2m00.0s), 000/100 VUs, 10270812 complete and 0 interrupted iterations
 
 ### Performance test (buffer 10k)
 
+_Also tested with 1M buffer, didn't make a difference in this test._
+
 63-70 cores used at peak during the test
 55-65 cores used by the test runner
 <7GB of ram used
@@ -145,50 +150,50 @@ followers using 50-80% cpu
 
 
      ✗ is status 200
-      ↳  99% — ✓ 34007695 / ✗ 74
+      ↳  99% — ✓ 34288973 / ✗ 61
 
-     checks.........................: 99.99%   ✓ 34007695      ✗ 74
+     checks.........................: 99.99%   ✓ 34288973      ✗ 61
      data_received..................: 5.0 GB   21 MB/s
-     data_sent......................: 3.0 GB   13 MB/s
-     http_req_blocked...............: avg=9.19µs   min=320ns    med=1.9µs   max=384.43ms p(90)=2.71µs  p(95)=3.25µs
-     http_req_connecting............: avg=346ns    min=0s       med=0s      max=135.02ms p(90)=0s      p(95)=0s
-   ✓ http_req_duration..............: avg=18.58ms  min=154.27µs med=7.91ms  max=1s       p(90)=69.5ms  p(95)=86.5ms
-       { expected_response:true }...: avg=18.58ms  min=154.27µs med=7.91ms  max=467.49ms p(90)=69.49ms p(95)=86.5ms
+     data_sent......................: 3.1 GB   13 MB/s
+     http_req_blocked...............: avg=7.89µs   min=320ns    med=1.9µs   max=221.57ms p(90)=2.71µs  p(95)=3.24µs
+     http_req_connecting............: avg=294ns    min=0s       med=0s      max=123.89ms p(90)=0s      p(95)=0s
+   ✓ http_req_duration..............: avg=16.99ms  min=172.36µs med=6.31ms  max=1s       p(90)=67.13ms p(95)=83.12ms
+       { expected_response:true }...: avg=16.99ms  min=172.36µs med=6.31ms  max=1s       p(90)=67.13ms p(95)=83.12ms
      ✓ { staticAsset:yes }..........: avg=0s       min=0s       med=0s      max=0s       p(90)=0s      p(95)=0s
-   ✓ http_req_failed................: 0.00%    ✓ 74            ✗ 34007695
-     http_req_receiving.............: avg=154.28µs min=4.98µs   med=17.16µs max=389.76ms p(90)=27.36µs p(95)=43.39µs
-     http_req_sending...............: avg=82.05µs  min=1.8µs    med=6.39µs  max=389.83ms p(90)=9.5µs   p(95)=23.19µs
+   ✓ http_req_failed................: 0.00%    ✓ 61            ✗ 34288973
+     http_req_receiving.............: avg=147.78µs min=5.3µs    med=16.97µs max=215.76ms p(90)=27.1µs  p(95)=41.97µs
+     http_req_sending...............: avg=92.2µs   min=1.76µs   med=6.3µs   max=222.21ms p(90)=9.36µs  p(95)=20.79µs
      http_req_tls_handshaking.......: avg=0s       min=0s       med=0s      max=0s       p(90)=0s      p(95)=0s
-     http_req_waiting...............: avg=18.35ms  min=136.46µs med=7.8ms   max=1s       p(90)=69.15ms p(95)=86.16ms
-     http_reqs......................: 34007769 141694.957197/s
-     iteration_duration.............: avg=31ms     min=176.22µs med=19.62ms max=1s       p(90)=88.69ms p(95)=110.2ms
-     iterations.....................: 34007769 141694.957197/s
+     http_req_waiting...............: avg=16.75ms  min=149.66µs med=6.22ms  max=1s       p(90)=66.73ms p(95)=82.74ms
+     http_reqs......................: 34289034 142866.904307/s
+     iteration_duration.............: avg=30.51ms  min=205.04µs med=19.54ms max=1s       p(90)=87.72ms p(95)=108.99ms
+     iterations.....................: 34289034 142866.904307/s
      vus............................: 6        min=6           max=10000
      vus_max........................: 10000    min=10000       max=10000
 
 
-running (4m00.0s), 00000/10000 VUs, 34007769 complete and 0 interrupted iterations
+running (4m00.0s), 00000/10000 VUs, 34289034 complete and 0 interrupted iterations
 ```
 
 It seems like the request completion rate did not grow much past 300 vus, so considering that we ran up to 10k vus I believe this is either limited by the HTTP framework or testing framework
 
 Some log output of the duration between reading from raft and writing to the pending request channels with incremented hybrid timestamps:
 ```
-1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 59.22µs
-1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 528.29µs
-1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 401.34µs
-1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 403.38µs
-1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 334.04µs
-1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 66.18µs
-1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 35.58µs
-1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 84.73µs
-1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 15.816689ms
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 27 requests in 14.72µs
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 1 requests in 5.75µs
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 6 requests in 5.9µs
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 2 requests in 6.52µs
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 1 requests in 1.78µs
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 67 requests in 63.51µs
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 87 requests in 83.8µs
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 212 requests in 2.81964ms
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 7139 requests in 6.427489ms
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 26 requests in 497.96µs
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 2034 requests in 1.50941ms
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 1 requests in 4.66µs
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 1 requests in 3.84µs
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 1 requests in 1.55µs
+1:42PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served 1 requests in 1.35µs
 ```
 
-perhaps GC pauses could be causing strangely large delays serving requests.
-
-### Performance test (buffer 1M):
-
-```
-
-```
+Looks like GC could be causing some issues, but without some go perf investigations I almost want to blame the http testing framework for not loading evenly.
