@@ -2,9 +2,18 @@ package http_server
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"github.com/danthegoodman1/EpicEpoch/raft"
+	"github.com/quic-go/quic-go/http3"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
@@ -22,8 +31,9 @@ import (
 var logger = gologger.NewLogger()
 
 type HTTPServer struct {
-	Echo      *echo.Echo
-	EpochHost *raft.EpochHost
+	Echo       *echo.Echo
+	EpochHost  *raft.EpochHost
+	quicServer *http3.Server
 }
 
 type CustomValidator struct {
@@ -59,7 +69,36 @@ func StartHTTPServer(epochHost *raft.EpochHost) *HTTPServer {
 	go func() {
 		logger.Info().Msg("starting h2c server on " + listener.Addr().String())
 		err := s.Echo.StartH2CServer("", &http2.Server{})
-		// stop the broker
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error().Err(err).Msg("failed to start h2c server, exiting")
+			os.Exit(1)
+		}
+	}()
+
+	// Start http/3 server
+	go func() {
+		tlsCert, err := generateTLSCert()
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to generate self-signed cert")
+		}
+
+		// TLS configuration
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{tlsCert},
+			NextProtos:   []string{"h3"},
+		}
+
+		// Create HTTP/3 server
+		s.quicServer = &http3.Server{
+			Addr:      ":443",
+			Handler:   s.Echo,
+			TLSConfig: tlsConfig,
+		}
+
+		logger.Info().Msg("starting h3 server on " + listener.Addr().String())
+		err = s.quicServer.ListenAndServe()
+
+		// Start the server
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error().Err(err).Msg("failed to start h2c server, exiting")
 			os.Exit(1)
@@ -157,8 +196,17 @@ func (s *HTTPServer) GetMembership(c echo.Context) error {
 }
 
 func (s *HTTPServer) Shutdown(ctx context.Context) error {
-	err := s.Echo.Shutdown(ctx)
-	return err
+	err := s.quicServer.Close()
+	if err != nil {
+		return fmt.Errorf("error in quicServer.Close: %w", err)
+	}
+
+	err = s.Echo.Shutdown(ctx)
+	if err != nil {
+		return fmt.Errorf("error shutting down echo: %w", err)
+	}
+
+	return nil
 }
 
 func LoggerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
@@ -186,4 +234,70 @@ func LoggerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		logger.Debug().Str("method", req.Method).Str("remote_ip", c.RealIP()).Str("req_uri", req.RequestURI).Str("handler_path", c.Path()).Str("path", p).Int("status", res.Status).Int64("latency_ns", int64(stop)).Str("protocol", req.Proto).Str("bytes_in", cl).Int64("bytes_out", res.Size).Msg("req recived")
 		return nil
 	}
+}
+
+const (
+	certFile = "cert.pem"
+	keyFile  = "key.pem"
+)
+
+func generateTLSCert() (tls.Certificate, error) {
+	// Check if certificate and key files exist
+	if fileExists(certFile) && fileExists(keyFile) {
+		// Load existing certificate and key
+		return tls.LoadX509KeyPair(certFile, keyFile)
+	}
+
+	// Generate a new certificate and key
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			Organization: []string{"Example Co"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().Add(time.Hour * 24 * 180), // Valid for 180 days
+		KeyUsage:  x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageServerAuth,
+		},
+		BasicConstraintsValid: true,
+	}
+
+	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	// Save the certificate
+	certOut, err := os.Create(certFile)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	certOut.Close()
+
+	// Save the key
+	keyOut, err := os.Create(keyFile)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	keyBytes, err := x509.MarshalECPrivateKey(privateKey)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyBytes})
+	keyOut.Close()
+
+	// Load the newly created certificate and key
+	return tls.LoadX509KeyPair(certFile, keyFile)
+}
+
+func fileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	return !os.IsNotExist(err)
 }
