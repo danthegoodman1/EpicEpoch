@@ -172,6 +172,21 @@ running (4m00.0s), 00000/10000 VUs, 34007769 complete and 0 interrupted iteratio
 
 It seems like the request completion rate did not grow much past 300 vus, so considering that we ran up to 10k vus I believe this is either limited by the HTTP framework or testing framework
 
+Some log output of the duration between reading from raft and writing to the pending request channels with incremented hybrid timestamps:
+```
+1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 59.22µs
+1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 528.29µs
+1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 401.34µs
+1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 403.38µs
+1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 334.04µs
+1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 66.18µs
+1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 35.58µs
+1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 84.73µs
+1:38PM INF raft/epoch_host.go:133 raft.(*EpochHost).generateTimestamps() > Served requests in 15.816689ms
+```
+
+perhaps GC pauses could be causing strangely large delays serving requests.
+
 ### Performance test (buffer 1M):
 
 ```
