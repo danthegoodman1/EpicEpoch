@@ -30,9 +30,30 @@ WIP
 
 Note that the HTTP/3 server will write a `cert.pem` and `key.pem` in the same directory as the binary if they do not already exist.
 
+Note that currently this is hard-coded to run 3 nodes locally:
+
+```
+1: "localhost:60001"
+2: "localhost:60002"
+3: "localhost:60003"
+```
+
 ## Configuration (env vars)
 
-WIP
+Configuration is done through environment variables
+
+| **ENV VAR**              | **Required** | **Default**         | **Description**                                                                                                                                                                   |
+|--------------------------|--------------|---------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| DEBUG                    | no           |                     | Enables debug logging if set to `1`                                                                                                                                               |
+| PRETTY                   | no           |                     | Enabled pretty print logging if set to `1`                                                                                                                                        |
+| LOG_TIME_MS              | no           |                     | Formats the time as unix milliseconds in logs                                                                                                                                     |
+| NODE_ID                  | yes          | `0` (invalid value) | Sets the Raft node ID, must be unique                                                                                                                                             |
+| TIMESTAMP_REQUEST_BUFFER | yes          | 10000               | Sets the channel buffer length for pending requests. Requests that are blocked when this buffer is full are responded to in random order, unlike requests that are in the buffer. |
+| EPOCH_INTERVAL_MS        | yes          | 100                 | The interval at which the Raft leader will increment the epoch (and reset the epoch index).                                                                                       |
+| EPOCH_DEADLINE_LIMIT     | yes          | 100                 | How many deadline exceeded errors incrementing the epoch can be tolerated before the system crashes                                                                               |
+| RAFT_ADDR                | yes          |                     | The address which raft is exposed                                                                                                                                                 |
+| HTTP_PORT                | yes          | 8080                | The address which the HTTP port is exposed (for interfacing with clients)                                                                                                         |
+
 
 ## Motivation (Why make this?)
 
