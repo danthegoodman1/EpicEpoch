@@ -30,7 +30,7 @@ WIP
 
 Note that the HTTP/3 server will write a `cert.pem` and `key.pem` in the same directory as the binary if they do not already exist.
 
-Note that currently this is hard-coded to run 3 nodes locally:
+Note that currently this is hard-coded to run 3 nodes locally (see https://github.com/danthegoodman1/EpicEpoch/issues/9):
 
 ```
 1: "localhost:60001"
