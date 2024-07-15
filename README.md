@@ -59,7 +59,7 @@ Configuration is done through environment variables
 
 Time is perhaps the most important thing to a distributed system.
 
-Without reliable time handling, no guarantees like consistency and atomicity can be made. You can't guarantee commits happen, or that they happen with the expected isolation. You can't guarantee that your data was replicated. It's a big deal.
+Without reliable time handling distributed isolation become nearly impossible. You can't guarantee commits happen, or that they happen with the expected isolation. You can't guarantee that your data was replicated. It's a big deal.
 
 I won't dive in to the details as to why time is so important, or so hard, for distributed systems, but just know that it's the bane of dist sys eng's existence. If we had perfect clocks, then dist systems would be orders of magnitude faster, have far fewer bugs, and be far easier to develop.
 
