@@ -18,6 +18,7 @@ Used for distributed systems and clients, like distributed transactions. Self-su
   * [Performance testing (HTTP/1.1)](#performance-testing-http11)
     * [Simple test (buffer 10k)](#simple-test-buffer-10k)
     * [Performance test (buffer 10k)](#performance-test-buffer-10k)
+  * [Pushing beyond a single node](#pushing-beyond-a-single-node)
 <!-- TOC -->
 
 ## Getting started
@@ -263,3 +264,25 @@ http_server.(*HTTPServer).GetTimestamp() > handled request (HTTP/1.1) in 226.542
 It's quite clear that either k6 (the load tester), or it's lack of h2c/h3 support is to blame, considering the known performance of the echo framework, the fact that it used ~70% of available CPU on the machine, and the logs above.
 
 There would also likely be massive performance gains by increaseing the ulimit and tuning the tcp stack.
+
+## Pushing beyond a single node
+
+With Percolator-style transactions, reliable ordered time is needed. We currently get around this by electing a single node, and incrementing hybrid timestamp intervals within a logical time internal.
+
+Restricting this to a single node removes the issue of clock-drift, causing one timestamp oracle to think it's further/behind another.
+
+But this introduces a scale problem: What if we need to perform 100M txn/s? That's well beyond what we'd like to load a single node with.
+
+We can achieve multi-node timestamp oracles while preserving the same semantics, just by changing clients to be a bit smarter.
+
+We can actually drop the hybrid timestamp, and adjust the time interval to be in-line with our maximum clock drift. Then, clients finding an equivalent timestamp or higher, consider that qualification for a retry: They wait out the uncertainty.
+
+With the inclusion of atomic clocks in cloud datacenters (AWS, GCP, etc.), time drift between nodes, even across datacenters, [is typically under 100 microseconds](https://aws.amazon.com/blogs/compute/its-about-time-microsecond-accurate-clocks-on-amazon-ec2-instances/).
+
+Now we don't want to reduce our intervals that far, 10ms is a very reasonable timescale for us to reduce Raft activity, while also reducing the probability of time-contention in transactions. If you have high-contention transactions, check out [Chardonnay](https://www.usenix.org/conference/osdi23/presentation/eldeeb) as an alternative to Percolator.
+
+Because of the guaranteed time drift bounds, we can even use this in a globally distributed setting: As long as we have acceptable drift because of atomic clocks, we can truncate time down to the nearest interval.
+
+This is very similar to how Spanner handles transactions, in effect, waiting out the uncertainty. Last I checked, they used 7ms as their time interval.
+
+EpicEpoch doesn't support distributed time intervals at the moment, however it (or a derivative project) might in the future.
