@@ -4,6 +4,7 @@
 * [Client Design (WIP)](#client-design-wip)
   * [Client-aware routing](#client-aware-routing)
   * [Choosing a protocol](#choosing-a-protocol)
+  * [Batching requests](#batching-requests)
   * [Notes on Raft](#notes-on-raft)
 <!-- TOC -->
 
@@ -19,9 +20,13 @@ Other interfaces such as gRPC will reject the get with a `ErrNotLeader` error, i
 
 ## Choosing a protocol
 
-While HTTP/3 should be the no-brainer, you will want to test the performance of h2c vs h3 for your client, as h3 is not super widely supported so some community implementations could end up being slower than a good h2c implementation.
+While HTTP/3 should be the no-brainer, you will want to test the performance of h2c vs h3 for your client, as h3 is not super widely supported so some community implementations could end up being slower than a good h2c implementation (or on good networks, http/2 is actually shown to be faster).
 
 Avoid HTTP/1.1 when ever you can, it will have a monstrous negative performance impact.
+
+## Batching requests
+
+(WIP) if you have a client that might be doing many concurrent transactions, batching up their creation on some interval (e.g. every 5ms) and then fetching multiple timestamps from EpicEpoch will dramatically improve the throughput in terms of timestamps/sec that can be generated.
 
 ## Notes on Raft
 
