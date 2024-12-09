@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/danthegoodman1/EpicEpoch/utils"
-	"github.com/lni/dragonboat/v3"
 	"sync/atomic"
 	"time"
+
+	"github.com/lni/dragonboat/v3"
+
+	"github.com/danthegoodman1/EpicEpoch/utils"
 )
 
 type (
@@ -121,10 +123,11 @@ func (e *EpochHost) generateTimestamps() {
 		// Build the timestamp
 		timestamp := make([]byte, 16*req.count) // 8 for epoch, 8 for index, multiply for each
 		logger.Debug().Msgf("writing for %d", req.count)
+		reqIndex := e.epochIndex.Add(uint64(req.count)) // do a single atomic increment for the entire batch
+		reqIndex -= uint64(req.count)                   // reset it down to what it was before we incremented
 		for i := 0; i < req.count; i++ {
-			reqIndex := e.epochIndex.Add(1)
+			reqIndex++ // increment our request index
 			offset := i * 16
-			fmt.Println("writing to bounds", offset, offset+16)
 			binary.BigEndian.PutUint64(timestamp[offset:offset+8], currentEpoch.Epoch)
 			binary.BigEndian.PutUint64(timestamp[offset+8:offset+16], reqIndex)
 		}
