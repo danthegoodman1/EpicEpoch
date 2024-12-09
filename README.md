@@ -271,7 +271,9 @@ With Percolator-style transactions, reliable ordered time is needed. We currentl
 
 Restricting this to a single node removes the issue of clock-drift, causing one timestamp oracle to think it's further/behind another.
 
-But this introduces a scale problem: What if we need to perform 100M txn/s? That's well beyond what we'd like to load a single node with.
+But this introduces a scale problem: What if we need to perform 100M txn/s?
+
+Well the simple solution is just client batching. You can trivially exceed 1B timestamps/s with that.
 
 We can achieve multi-node timestamp oracles while preserving the same semantics, just by changing clients to be a bit smarter.
 
@@ -279,7 +281,7 @@ We can actually drop the hybrid timestamp, and adjust the time interval to be in
 
 With the inclusion of atomic clocks in cloud datacenters (AWS, GCP, etc.), time drift between nodes, even across datacenters, [is typically under 100 microseconds](https://aws.amazon.com/blogs/compute/its-about-time-microsecond-accurate-clocks-on-amazon-ec2-instances/).
 
-Now we don't want to reduce our intervals that far, 10ms is a very reasonable timescale for us to reduce Raft activity, while also reducing the probability of time-contention in transactions. If you have high-contention transactions, check out [Chardonnay](https://www.usenix.org/conference/osdi23/presentation/eldeeb) as an alternative to Percolator.
+Now we don't want to reduce our intervals that far, 10ms is a very reasonable timescale for us to reduce Raft activity, while also reducing the probability of time-contention in transactions. If you have high-contention transactions, check out [Chardonnay](https://www.usenix.org/conference/osdi23/presentation/eldeeb) as an alternative to Percolator. But you have to guarantee that this is the max drift.
 
 Because of the guaranteed time drift bounds, we can even use this in a globally distributed setting: As long as we have acceptable drift because of atomic clocks, we can truncate time down to the nearest interval.
 
